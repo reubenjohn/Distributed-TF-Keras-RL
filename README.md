@@ -7,7 +7,6 @@ We bring up a cluster of processes:
 **6 Explorers**: Applies the learned model to explore the environment and collect data to learn from.  
 **1 Learner**: Improves the model by learning from the collected data.
 
-!!Below is a work in progress!!
 ===
 Usage
 ---
