@@ -51,7 +51,7 @@ class GymExperienceSequenceGenerator(ExperienceGenerator):
 
 
 class ExperienceBuffer(ExperienceGenerator):
-	def __init__(self, xp_generator: Callable, buffer_size: int = 10000):
+	def __init__(self, xp_generator: Callable, buffer_size: int = 1000000):
 		self.xp_generator = xp_generator
 		self.buffer = []
 		self.buffer_size = buffer_size
@@ -92,5 +92,6 @@ class ExperienceBuffer(ExperienceGenerator):
 		"""
 		Thread(target=self.fill_buffer).start()
 		while True:
+			print('Yielding %d experience buffer elements' % len(self.buffer))
 			for frame in reversed(self.buffer[self.insertion_index:] + self.buffer[:self.insertion_index]):
 				yield frame

@@ -1,5 +1,4 @@
 import datetime
-import math
 from time import sleep
 
 import gym
@@ -21,10 +20,10 @@ log_dir = './logs/rl/distributed_keras/%s/%s' % (env_id, datetime.datetime.now()
 
 n_explorers, batch_size_per_explorer = 6, 256
 batch_size = n_explorers * batch_size_per_explorer
-total_epochs, steps_per_epoch = 4, 100
+total_epochs, steps_per_epoch = 10, 100
 total_steps = total_epochs * steps_per_epoch
 initial_epsilon = 1
-terminal_epsilon = .001
+epsilon_sigma = .5
 gamma = 0.9
 
 
@@ -33,11 +32,15 @@ class Shared:
 		self.training_step = tf.Variable(0, False, name='training_step')
 		self.increment_step = self.training_step.assign_add(1, True, 'increment_step')
 		with tf.variable_scope('epsilon'):
-			self.decay_coeff = math.log((2 / terminal_epsilon - 1)) / total_steps
-			self.epsilon = tf.divide(initial_epsilon, tf.exp(tf.cast(self.training_step, tf.float32) * self.decay_coeff))
+			step_ratio = self.training_step / total_steps
+			# step_logit = tf.log(step_ratio / (1 - tf.minimum(step_ratio, 1. - 1e-9)))
+			# self.epsilon = .5 - .5 * tf.math.erf((step_logit - .5) / (math.sqrt(2) * epsilon_sigma))
+			self.epsilon = tf.maximum(1 - 2 * step_ratio, .2)
+
 		with tf.variable_scope('q'):
 			self.q = K.Sequential([
 				K.layers.InputLayer(ob_space_shape, name='q_input'),
+				K.layers.Dense(sum(ob_space_shape) ** 2, name='dense_hidden'),
 				K.layers.Dense(ac_space.n, name='dense')
 			])
 		with tf.variable_scope('explorer'):
@@ -88,7 +91,7 @@ def learner_target(task_index, job, _):
 		prediction = to_keras_lambda(prediction_fn, 'prediction', q_s, a)
 
 		learning_model = K.Model(inputs=[s, a, r, s2], outputs=[prediction])
-		learning_model.compile(tf.train.AdamOptimizer(0.1), K.losses.mean_absolute_error)
+		learning_model.compile(tf.train.AdamOptimizer(), K.losses.mean_absolute_error)
 
 	with tf.variable_scope('metrics'):
 		with tf.variable_scope('greedy_agent'):
